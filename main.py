@@ -1,59 +1,62 @@
-import requests
-from bs4 import BeautifulSoup as BS
+import psycopg2
+from dbmanager import DBManager
+from hh_api import HeadHunterAPI
+from utils import get_employers
+from vacancy import Vacancy
 from pprint import pprint
-from utils import create_database
-
-
-def get_employer_id_by_name(employer_name):
-    url = 'https://api.hh.ru/employers'
-    params = {'text': employer_name}
-    response = requests.get(url, params=params)
-    if response.status_code == 200:
-        data = response.json()
-        if 'items' in data and data['items']:
-            # Предполагаем, что берем первый найденный работодатель
-            employer_id = data['items'][0]['id']
-            return employer_id
-        else:
-            print('Работодатель не найден')
-    else:
-        print(f'Ошибка при запросе: {response.status_code}')
-
-
-def get_employer_name_by_id(employer_id):
-    url = f'https://hh.ru/employer/{employer_id}'
-
-    response = requests.get(url)
-
-
-    if response.status_code == 200:
-        soup = BS(response.content, 'html.parser')
-        employer_name = soup.find('span', class_='employer-sidebar-header__employer-name').text.strip()
-        return employer_name
-    else:
-        print(f'Ошибка при запросе: {response.status_code}')
 
 
 def main():
-    employer_name = input('Введите название работодателя: ')
 
-    url = 'https://api.hh.ru/employers'
-    params = {'text': employer_name}
+    db_name = 'hh_ru_vacancies'
+    try:
+        db_manager = DBManager()
+        db_manager.create_database(db_name)
+        db_manager.create_tables()
+    except FileNotFoundError as e:
+        print(f'Ошибка чтения файла конфигурации: {e}')
+        exit()
+    except psycopg2.Error as e:
+        print(f'Ошибка инициализации базы данных: {e}')
+        exit()
+    except Exception as e:
+        print(f'Ошибка чтения файла конфигурации: {e}')
+        exit()
 
-    response = requests.get(url, params=params)
-    pprint(response.json())
+    try:
+        employers = get_employers()
+        db_manager.fill_employers(employers)
+    except FileNotFoundError as e:
+        print(f'Ошибка заполнения данными таблицы \'employers\': {e}')
+        exit()
 
-    if response.status_code == 200:
-        data = response.json()
-        if 'items' in data and data['items']:
-            # Предполагаем, что берем первый найденный работодатель
-            employer_id = data['items'][0]['id']
-            print(f'ID работодателя "{employer_name}": {employer_id}')
-        else:
-            print('Работодатель не найден')
-    else:
-        print(f'Ошибка при запросе: {response.status_code}')
+    # парсинг вакансий с сайта hh.ru
+    hh_api = HeadHunterAPI()
+    vacancies = []
+    for employer_id in employers:
+        vacancies.extend(hh_api.get_vacancies(employer_id))
+    print('vacancies: \n')
+    pprint(vacancies)
+
+    # заполнение
+    for employer in employers:
+        vacancies_info = hh_api.get_vacancies(employer['id'])
+
+        # send info about company in database
+        db_manager.fill_employers(vacancies_info[0])
+
+        # creating list of vacancies
+        vacancies = []
+        for vacancy_info in vacancies_info:
+            vacancy = Vacancy(vacancy_info)
+            vacancies.append(vacancy)
+
+        # insert vacancies in database
+        db_manager.fill_vacancies(vacancies)
+
+        print(f"Компания {employer['name']} - количество вакансий", len(vacancies_info))
+    print('Данные по вакансиям выбранных работодателей добавлены в базу данных SQL')
 
 
 if __name__ == '__main__':
-    create_database('hh_ru_vacancies')
+    main()

@@ -1,5 +1,4 @@
 import re
-import csv
 import json
 
 
@@ -32,49 +31,7 @@ def convert_currency(currency_code, amount):
     return round(currencies[currency_code] * amount)
 
 
-def save_to_json(file_name, object_list):
-    """
-    Сохраняет информацию о списке объектов в файл с расширением json
-    :param file_name: имя файла для сохранения
-    :param object_list: список объектов
-    :return: None
-    """
-    with open(file_name, mode='w', encoding='utf-8') as file:
-        json.dump([vars(obj) for obj in object_list], file, ensure_ascii=False)
-
-
-def hh_keywords_to_list(string):
-    """
-    Преобразует строку с ключевыми словами в список
-    :param string: входная строка, содержащая ключевые слова через запятую (или одно слово)
-    :return: список ключевых слов
-    """
-    string = string.strip().lower()
-    if ',' in string or ' ' in string:
-        while ' ' in string:
-            string = string.replace(' ', '')
-        keywords = string.split(',')
-    else:
-        keywords = [string]
-    return keywords
-
-
-def save_result_and_print(vacancy_objects_list):
-    """
-    Сохраняет результат в файл и выводит информацию об этом
-    :param vacancy_objects_list: список объектов класса Vacancy для сохранения
-    :return: None
-    """
-    for vacancy in vacancy_objects_list:
-        print(vacancy)
-    save_to_json('data\\vacancies.json', vacancy_objects_list)
-    print(f'\nВакансии в количестве {len(vacancy_objects_list)} шт успешно загружены в файл vacancies.json')
-
-
-def create_database(database_name: str, params: dict) -> None:
-    """
-    Создание базы данных с информацией о вакансиях работодателей
-    :param database_name:
-    :param params:
-    :return:
-    """
+def get_employers(file_path='employers.json'):
+    with open(file_path, 'r', encoding='utf-8') as f:
+        employers = json.loads(f)
+    return employers
