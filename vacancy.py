@@ -5,6 +5,7 @@ class Vacancy:
         self.name = vacancy_data['name']
         self.city = vacancy_data['city']
         self.employer = vacancy_data['employer']
+        self.employer = vacancy_data['employer_id']
         self.employer_url = vacancy_data['employer_url']
         self.work_mode = vacancy_data['work_mode']
         self.experience = vacancy_data['experience']
