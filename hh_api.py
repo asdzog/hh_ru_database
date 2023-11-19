@@ -6,12 +6,18 @@ class HeadHunterAPI:
     """
     Класс для работы с API hh.ru
     """
-    HH_API_URL = 'https://api.hh.ru/employers'
+    HH_API_URL = 'https://api.hh.ru/vacancies'
 
-    def get_vacancies(self, employer_id):
+    def get_vacancies(self, employer_id: int) -> list:
+        """
+        Метод для получения списка словарей с вакансиями по id работодателя
+        :param employer_id: int
+        :return: list
+        """
         params = {'employer_id': employer_id,
                   'per_page': 100,
                   'page': 0,
+                  'archived': False,
                   }
         vc_list = []
         hh_ru_data = requests.get(self.HH_API_URL, params)
@@ -48,8 +54,8 @@ class HeadHunterAPI:
                 reqs_without_text = 'Требования не указаны'
 
             vc_list.append({
-                'resource': 'HeadHunter',
-                'id': vc['id'], 'name': vc['name'], 'city': vc['area']['name'], 'salary': salary,
+                'resource': 'HeadHunter', 'employer_id': employer_id,
+                'id': int(vc['id']), 'name': vc['name'], 'city': vc['area']['name'], 'salary': salary,
                 'url': vc['alternate_url'], 'work_mode': vc['employment']['name'],
                 'salary_from': salary_from, 'salary_to': salary_to,
                 'experience': vc['experience']['name'], 'employer': vc['employer']['name'],
