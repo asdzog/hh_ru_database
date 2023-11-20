@@ -61,14 +61,27 @@ class DBManager:
         conn = psycopg2.connect(**config)
         conn.autocommit = True
 
-        with conn.cursor() as cur:
-            query = f'DROP DATABASE IF EXIST {self.__config["dbname"]}'
-            cur.execute(query)
-            query = f'CREATE DATABASE {self.__config["dbname"]}'
-            cur.execute(query)
-
-        conn.close()
-        print(f'База данных {self.__config["dbname"]} создана')
+        try:
+            # Создаем объект курсора
+            with conn.cursor() as cur:
+                # Проверяем существование базы данных
+                cur.execute(f"SELECT 1 FROM pg_database WHERE datname = '{db_name}'")
+                # Если база данных существует, удаляем ее
+                if cur.fetchone():
+                    cur.execute(f'DROP DATABASE {db_name}')
+            config['dbname'] = db_name
+            conn_create = psycopg2.connect(**config)
+            try:
+                conn_create.autocommit = True
+                cur_create = conn_create.cursor()
+                cur_create.execute(f'CREATE DATABASE {db_name}')
+                print(f'База данных {db_name} создана')
+            finally:
+                conn_create.close()
+            # Пересоздаем соединение с только что созданной базой данных
+            conn = psycopg2.connect(**config)
+        finally:
+            conn.close()
 
     def create_tables(self) -> None:
         query = """
