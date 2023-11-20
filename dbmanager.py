@@ -55,38 +55,29 @@ class DBManager:
         return value
 
     def create_database(self, db_name) -> None:
-        config = self.__config.copy()
-        config["dbname"] = db_name
 
+        config = self.__config.copy()
         conn = psycopg2.connect(**config)
-        conn.autocommit = True
 
         try:
+            conn.autocommit = True
             # Создаем объект курсора
             with conn.cursor() as cur:
                 # Проверяем существование базы данных
-                cur.execute(f"SELECT 1 FROM pg_database WHERE datname = '{db_name}'")
-                # Если база данных существует, удаляем ее
-                if cur.fetchone():
-                    cur.execute(f'DROP DATABASE {db_name}')
-            config['dbname'] = db_name
-            conn_create = psycopg2.connect(**config)
-            try:
-                conn_create.autocommit = True
-                cur_create = conn_create.cursor()
-                cur_create.execute(f'CREATE DATABASE {db_name}')
-                print(f'База данных {db_name} создана')
-            finally:
-                conn_create.close()
-            # Пересоздаем соединение с только что созданной базой данных
-            conn = psycopg2.connect(**config)
+                query = f'DROP DATABASE IF EXISTS {db_name}'
+                cur.execute(query)
+                # Создаем чистую базу данных
+                query = f'CREATE DATABASE {db_name}'
+                cur.execute(query)
         finally:
             conn.close()
+            self.__config['database'] = db_name
+            print(f'База данных {db_name} создана')
 
     def create_tables(self) -> None:
         query = """
         CREATE TABLE employers (
-            employer_id SERIAL,
+            employer_id INT PRIMARY KEY,
             title VARCHAR(50)
             ); 
         """
@@ -95,33 +86,58 @@ class DBManager:
 
         query = """
         CREATE TABLE vacancies (
-            vacansy_id SERIAL,
-            title VARCHAR(100)
-            employer_id INT REFERENCES employers (employer_id),
+            id SERIAL PRIMARY KEY,
+            vacanсy_id INT,
+            title VARCHAR(100),
             salary_min FLOAT,
-            url VARCHAR(100)
+            city VARCHAR(80),
+            url VARCHAR(100),
+            employer_id INT REFERENCES employers (employer_id),
+            work_mode VARCHAR(100),
+            experience VARCHAR(80),
+            requirements TEXT
             );
         """
         self.__execute(query)
         print('Таблица vacancies создана')
 
-    def fill_employers(self, values):
-        employers = [(value, key) for key, value in values.items()]
+    def fill_employers(self, employers):
+        print('Заполнение данными таблицы employers...')
+        employers = [(int(e_id), name) for e_id, name in employers.items()]
         query = """
-            INSERT INTO emlpoyers ('emlpoyer_id', 'title')
-            VALUES
-            (%s, %s)
+            INSERT INTO employers (employer_id, title)
+            VALUES (%s, %s)
             """
         self.__insert_many(query, employers)
+        print('Таблица employers заполнена данными')
 
-    def fill_vacancies(self, values):
-        employers = [(value, key) for key, value in values.items()]
-        query = """
-            INSERT INTO emlpoyers ('emlpoyer_id', 'title')
-            VALUES
-            (%s, %s)
-            """
-        self.__insert_many(query, employers)
+    def fill_vacancies(self, vacancies):
+        print('Заполнение данными таблицы vacancies...')
+        vacancies_info = set()
+        for vacancy in vacancies:
+            salary_min = min(vacancy['salary_from'], vacancy['salary_to'])
+            if not salary_min:
+                continue
+            else:
+                vacancies_info.add((
+                    vacancy['id'],
+                    vacancy['name'],
+                    salary_min,
+                    vacancy['city'],
+                    vacancy['url'],
+                    vacancy['employer_id'],
+                    vacancy['work_mode'],
+                    vacancy['experience'],
+                    vacancy['requirements'],
+                ))
+            vacancies_list = list(vacancies_info)
+            query = """
+                        INSERT INTO vacancies (vacanсy_id, title, salary_min, city,
+                        url, employer_id, work_mode, experience, requirements)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """
+            self.__insert_many(query, vacancies_list)
+        print('Таблица vacancies заполнена данными')
 
     def get_companies_and_vacancies_count(self):
         query = """SELECT company_name, COUNT(*)

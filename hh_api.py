@@ -54,7 +54,7 @@ class HeadHunterAPI:
                 reqs_without_text = 'Требования не указаны'
 
             vc_list.append({
-                'resource': 'HeadHunter', 'employer_id': employer_id,
+                'employer_id': employer_id,
                 'id': int(vc['id']), 'name': vc['name'], 'city': vc['area']['name'], 'salary': salary,
                 'url': vc['alternate_url'], 'work_mode': vc['employment']['name'],
                 'salary_from': salary_from, 'salary_to': salary_to,
