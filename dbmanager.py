@@ -78,7 +78,7 @@ class DBManager:
         query = """
         CREATE TABLE employers (
             employer_id INT PRIMARY KEY,
-            title VARCHAR(50)
+            employer VARCHAR(50)
             ); 
         """
         self.__execute(query)
@@ -88,7 +88,7 @@ class DBManager:
         CREATE TABLE vacancies (
             id SERIAL PRIMARY KEY,
             vacanсy_id INT,
-            title VARCHAR(100),
+            vacancy_name VARCHAR(100),
             salary_min FLOAT,
             city VARCHAR(80),
             url VARCHAR(100),
@@ -105,7 +105,7 @@ class DBManager:
         print('Заполнение данными таблицы employers...')
         employers = [(int(e_id), name) for e_id, name in employers.items()]
         query = """
-            INSERT INTO employers (employer_id, title)
+            INSERT INTO employers (employer_id, employer)
             VALUES (%s, %s)
             """
         self.__insert_many(query, employers)
@@ -132,54 +132,60 @@ class DBManager:
                 ))
             vacancies_list = list(vacancies_info)
             query = """
-                        INSERT INTO vacancies (vacanсy_id, title, salary_min, city,
-                        url, employer_id, work_mode, experience, requirements)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        """
+            INSERT INTO vacancies (vacanсy_id, vacancy_name, salary_min, city,
+            url, employer_id, work_mode, experience, requirements)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
             self.__insert_many(query, vacancies_list)
         print('Таблица vacancies заполнена данными')
 
     def get_companies_and_vacancies_count(self):
-        query = """SELECT company_name, COUNT(*)
+        query = """
+        SELECT employer, COUNT(*)
         FROM vacancies
-        JOIN companies USING (company_id)
-        GROUP BY company_name"""
+        JOIN employers USING (employer_id)
+        GROUP BY employer
+        """
         count = self.__fetch_all(query)
         return count
 
     def get_all_vacancies(self):
-        query = """SELECT company_name, vacancy_name, salary_average, url
+        query = """
+        SELECT employer, vacancy_name, salary_min, url
         FROM vacancies
-        JOIN companies USING (company_id)
+        JOIN employers USING (employer_id)
         """
         all_vacancies = self.__fetch_all(query)
         return all_vacancies
 
     def get_avg_salary(self):
         query = """
-            SELECT AVG(vacancies.salary_min)
-            FROM vacancies
-            """
-        value = self.__fetch_all(query)[0][0]
+        SELECT AVG(vacancies.salary_min)
+        FROM vacancies
+        """
+        value = self.__fetch_all(query)
         return value
 
     def get_vacancies_with_higher_salary(self):
-        query = """SELECT company_name, vacancy_name, salary_average, url
+        query = """
+        SELECT employer, vacancy_name, salary_min, url
         FROM vacancies
-        JOIN companies USING (company_id_hh)
-        WHERE salary_average > (SELECT AVG(salary_average)
+        JOIN employers USING (employer_id)
+        WHERE salary_min > (SELECT AVG(salary_min)
         FROM vacancies
-        WHERE salary_average > 0)
-        ORDER BY salary_average DESC"""
+        WHERE salary_min > 0)
+        ORDER BY salary_min DESC
+        """
         vacancies = self.__fetch_all(query)
         return vacancies
 
-    def get_vacancies_with_keyword(self):
-        query = """SELECT company_name, vacancy_name, salary_average, url
+    def get_vacancies_with_keyword(self, keyword):
+        query = f"""SELECT employer, vacancy_name, salary_min, url
         FROM vacancies
-        JOIN companies USING (company_id_hh)
-        WHERE vacancy_name LIKE '%{word.lower()}%'
-        OR vacancy_name LIKE '%{word.title()}%'
-        OR vacancy_name LIKE '%{word.upper()}%'"""
+        JOIN employers USING (employer_id)
+        WHERE vacancy_name LIKE '%{keyword.lower()}%'
+        OR vacancy_name LIKE '%{keyword.title()}%'
+        OR vacancy_name LIKE '%{keyword.upper()}%'
+        """
         vacancies = self.__fetch_all(query)
         return vacancies
